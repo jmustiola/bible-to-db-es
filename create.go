@@ -26,7 +26,7 @@ func (dbConnection *DBConnection) createVersion(versionName string, versionAbbr 
 		Abbr:      abbr,
 	})
 	if err != nil {
-		log.Fatal("Error creating version in DB", err)
+		log.Fatal("Error creating version in DB ", err)
 	}
 	log.Println("Version created succesfully")
 	return v
@@ -45,7 +45,7 @@ func (dbConnection *DBConnection) createBook(version database.Version, book Book
 		BookOrder:   book_order,
 	})
 	if err != nil {
-		log.Fatal("Error creating book in DB", err)
+		log.Fatal("Error creating book in DB ", err)
 	}
 
 	for _, chapter := range book.Chapters {
@@ -58,7 +58,7 @@ func (dbConnection *DBConnection) createBook(version database.Version, book Book
 			BookID:     b.ID,
 		})
 		if err != nil {
-			log.Fatal("Error creating book in DB", err)
+			log.Fatal("Error creating book in DB ", err)
 		}
 
 		for _, verse := range chapter.Verses {
@@ -71,7 +71,7 @@ func (dbConnection *DBConnection) createBook(version database.Version, book Book
 				ChapterID: c.ID,
 			})
 			if err != nil {
-				log.Fatal("Error creating book in DB", err)
+				log.Fatal("Error creating book in DB ", err)
 			}
 		}
 	}
