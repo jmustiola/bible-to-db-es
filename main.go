@@ -6,6 +6,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/hiahir357/bible-to-db/internal/database"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
@@ -44,8 +45,30 @@ func main() {
 		if err != nil {
 			log.Println("Error parsing the json file to book", filename)
 		}
-		go dbConnection.createBook(version, book, int32(i+1), wg)
+		go create(version.ID, book, int32(i), &dbConnection, wg)
 	}
 	wg.Wait()
 
+}
+
+func create(versionId uuid.UUID, book Book, bookOrder int32, dbConnection *DBConnection, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	b, err := dbConnection.createBook(versionId, book, bookOrder)
+	if err != nil {
+		log.Fatal("Error while creating book:", err)
+	}
+	for _, chapter := range book.Chapters {
+		c, err := dbConnection.createChapter(b.ID, chapter)
+		if err != nil {
+			log.Fatal("Error while creating chapter:", err)
+		}
+		for _, verse := range chapter.Verses {
+			_, err := dbConnection.createVerse(c.ID, verse)
+			if err != nil {
+				log.Fatal("Error while creating verse:", err)
+			}
+		}
+	}
+	log.Printf("%v - Book %s created successfully", bookOrder, book.Name)
 }
