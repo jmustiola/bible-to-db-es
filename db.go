@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -27,7 +29,7 @@ func (dbConnection *DBConnection) createVersion(versionName string, versionAbbr 
 	if err != nil {
 		log.Fatal("Error creating version in DB ", err)
 	}
-	log.Println("Version created succesfully")
+	// log.Println("Version created succesfully")
 	return v
 }
 
@@ -43,7 +45,7 @@ func (dbConnection *DBConnection) createBook(versionId uuid.UUID, book Book, boo
 		BookOrder:   book_order,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error creating book in DB: %w", err)
 	}
 	return &b, nil
 }
@@ -58,7 +60,7 @@ func (dbConnection *DBConnection) createChapter(bookId uuid.UUID, chapter Chapte
 		BookID:     bookId,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error creating chapter in DB: %w", err)
 	}
 	return &c, nil
 }
@@ -73,7 +75,31 @@ func (dbConnection *DBConnection) createVerse(chapterId uuid.UUID, verse Verse) 
 		ChapterID: chapterId,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error creating verse in DB: %w", err)
 	}
 	return &v, nil
+}
+
+func (dbConnection *DBConnection) processBookCreation(params BookCreationParams, result chan Result, wg *sync.WaitGroup) {
+	defer wg.Done()
+	b, err := dbConnection.createBook(params.VersionId, params.Book, params.BookOrder)
+	if err != nil {
+		result <- Result{Message: "Fatal error", Error: err}
+		return
+	}
+	for _, chapter := range params.Book.Chapters {
+		c, err := dbConnection.createChapter(b.ID, chapter)
+		if err != nil {
+			result <- Result{Message: "Fatal error", Error: err}
+			return
+		}
+		for _, verse := range chapter.Verses {
+			_, err := dbConnection.createVerse(c.ID, verse)
+			if err != nil {
+				result <- Result{Message: "Fatal error", Error: err}
+				return
+			}
+		}
+	}
+	result <- Result{Message: fmt.Sprintf("%v - Book %s created successfully", params.BookOrder, params.Book.Name), Error: nil}
 }

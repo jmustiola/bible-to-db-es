@@ -3,72 +3,61 @@ package main
 import (
 	"database/sql"
 	"log"
-	"os"
+	"path/filepath"
 	"sync"
 
-	"github.com/google/uuid"
 	"github.com/hiahir357/bible-to-db/internal/database"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
-type DBConnection struct {
-	DB *database.Queries
-}
-
 func main() {
 	// loading env variables
 	godotenv.Load(".env")
 
-	// getting DB_URL
-	var dbUrlStr string = os.Getenv("DB_URL")
-	if dbUrlStr == "" {
-		log.Fatal("DB_URL env variable not found")
-	}
+	// getting ENVs
+	dbUrlStr, dataSourcePath := getProgramEnvs()
 
 	// database connection
 	conn, err := sql.Open("postgres", dbUrlStr)
 	if err != nil {
-		log.Fatal("Cannot connect to databse", err)
+		log.Fatal("Error connecting to the database:", err)
 	}
+	defer conn.Close()
+
 	queries := database.New(conn)
 	dbConnection := DBConnection{
 		DB: queries,
 	}
 
 	wg := &sync.WaitGroup{}
+	result := make(chan Result)
 
 	version := dbConnection.createVersion("Reina-Valera 1960", "RV1960")
 	for i, filename := range JSON_FILENAMES {
 		wg.Add(1)
-		book, err := jsonToBook(filename)
+		book, err := jsonToBook(filepath.Join(dataSourcePath, filename))
 		if err != nil {
-			log.Println("Error parsing the json file to book", filename)
+			log.Println("Error parsing the json file to model", filename, ":", err)
 		}
-		go create(version.ID, book, int32(i), &dbConnection, wg)
-	}
-	wg.Wait()
-
-}
-
-func create(versionId uuid.UUID, book Book, bookOrder int32, dbConnection *DBConnection, wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	b, err := dbConnection.createBook(versionId, book, bookOrder)
-	if err != nil {
-		log.Fatal("Error while creating book:", err)
-	}
-	for _, chapter := range book.Chapters {
-		c, err := dbConnection.createChapter(b.ID, chapter)
-		if err != nil {
-			log.Fatal("Error while creating chapter:", err)
+		params := BookCreationParams{
+			BookOrder: int32(i + 1),
+			VersionId: version.ID,
+			Book:      book,
 		}
-		for _, verse := range chapter.Verses {
-			_, err := dbConnection.createVerse(c.ID, verse)
-			if err != nil {
-				log.Fatal("Error while creating verse:", err)
-			}
-		}
+		go dbConnection.processBookCreation(params, result, wg)
 	}
-	log.Printf("%v - Book %s created successfully", bookOrder, book.Name)
+
+	go func() {
+		wg.Wait()
+		close(result)
+	}()
+
+	for res := range result {
+		if res.Error != nil {
+			log.Fatal("Error creating book in DB", res.Error)
+		}
+		log.Println(res.Message)
+	}
+
 }
