@@ -16,4 +16,5 @@ type Book struct {
 	TotalVerses   int32     `json:"totalVers"`
 	TotalChapters int32     `json:"totalChapters"`
 	Chapters      []Chapter `json:"chapters"`
+	BookOrder     int32     `json:"bookOrder"`
 }

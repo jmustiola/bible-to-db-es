@@ -33,7 +33,7 @@ func (dbConnection *DBConnection) createVersion(versionName string, versionAbbr 
 	return v
 }
 
-func (dbConnection *DBConnection) createBook(versionId uuid.UUID, book Book, book_order int32) (*database.Book, error) {
+func (dbConnection *DBConnection) createBook(versionId uuid.UUID, book Book) (*database.Book, error) {
 	b, err := dbConnection.DB.CreateBook(context.Background(), database.CreateBookParams{
 		ID:          uuid.New(),
 		VersionID:   versionId,
@@ -42,7 +42,7 @@ func (dbConnection *DBConnection) createBook(versionId uuid.UUID, book Book, boo
 		Name:        book.Name,
 		NumChapters: book.TotalChapters,
 		NumVerses:   book.TotalVerses,
-		BookOrder:   book_order,
+		BookOrder:   int32(book.BookOrder),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("error creating book in DB: %w", err)
@@ -82,7 +82,7 @@ func (dbConnection *DBConnection) createVerse(chapterId uuid.UUID, verse Verse) 
 
 func (dbConnection *DBConnection) processBookCreation(params BookCreationParams, result chan Result, wg *sync.WaitGroup) {
 	defer wg.Done()
-	b, err := dbConnection.createBook(params.VersionId, params.Book, params.BookOrder)
+	b, err := dbConnection.createBook(params.VersionId, params.Book)
 	if err != nil {
 		result <- Result{Message: "Fatal error", Error: err}
 		return
@@ -101,5 +101,5 @@ func (dbConnection *DBConnection) processBookCreation(params BookCreationParams,
 			}
 		}
 	}
-	result <- Result{Message: fmt.Sprintf("%v - Book %s created successfully", params.BookOrder, params.Book.Name), Error: nil}
+	result <- Result{Message: fmt.Sprintf("%v - Book %s created successfully", params.Book.BookOrder, params.Book.Name), Error: nil}
 }

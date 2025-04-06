@@ -34,14 +34,13 @@ func main() {
 	result := make(chan Result)
 
 	version := dbConnection.createVersion("Reina-Valera 1960", "RV1960")
-	for i, filename := range JSON_FILENAMES {
+	for _, filename := range JSON_FILENAMES {
 		wg.Add(1)
 		book, err := jsonToBook(filepath.Join(dataSourcePath, filename))
 		if err != nil {
 			log.Println("Error parsing the json file to model", filename, ":", err)
 		}
 		params := BookCreationParams{
-			BookOrder: int32(i + 1),
 			VersionId: version.ID,
 			Book:      book,
 		}

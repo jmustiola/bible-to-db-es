@@ -20,7 +20,6 @@ type Result struct {
 }
 
 type BookCreationParams struct {
-	BookOrder int32
 	VersionId uuid.UUID
 	Book      Book
 }
