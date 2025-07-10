@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"log"
+	"os"
 	"path/filepath"
 	"sync"
 
@@ -30,33 +31,44 @@ func main() {
 		DB: queries,
 	}
 
-	wg := &sync.WaitGroup{}
-	result := make(chan Result)
+	switch os.Args[1] {
+	case "gen":
+		wg := &sync.WaitGroup{}
+		result := make(chan Result)
 
-	version := dbConnection.createVersion("Reina-Valera 1960", "RV1960")
-	for _, filename := range JSON_FILENAMES {
-		wg.Add(1)
-		book, err := jsonToBook(filepath.Join(dataSourcePath, filename))
-		if err != nil {
-			log.Println("Error parsing the json file to model", filename, ":", err)
+		version := dbConnection.createVersion("Reina-Valera 1960", "RV1960")
+		for _, filename := range JSON_FILENAMES {
+			wg.Add(1)
+			book, err := jsonToBook(filepath.Join(dataSourcePath, filename))
+			if err != nil {
+				log.Println("Error parsing the json file to model", filename, ":", err)
+			}
+			params := BookCreationParams{
+				VersionId: version.ID,
+				Book:      book,
+			}
+			go dbConnection.processBookCreation(params, result, wg)
 		}
-		params := BookCreationParams{
-			VersionId: version.ID,
-			Book:      book,
-		}
-		go dbConnection.processBookCreation(params, result, wg)
-	}
 
-	go func() {
-		wg.Wait()
-		close(result)
-	}()
+		go func() {
+			wg.Wait()
+			close(result)
+		}()
 
-	for res := range result {
-		if res.Error != nil {
-			log.Fatal("Error creating book in DB", res.Error)
+		for res := range result {
+			if res.Error != nil {
+				log.Fatal("Error creating book in DB", res.Error)
+			}
+			log.Println(res.Message)
 		}
-		log.Println(res.Message)
+	case "--search":
+		if os.Args[2] != "" {
+			result := dbConnection.filterByWord(os.Args[2])
+			for _, row := range result {
+				log.Println(row)
+			}
+		}
+
 	}
 
 }

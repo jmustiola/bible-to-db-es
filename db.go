@@ -103,3 +103,16 @@ func (dbConnection *DBConnection) processBookCreation(params BookCreationParams,
 	}
 	result <- Result{Message: fmt.Sprintf("%v - Book %s created successfully", params.Book.BookOrder, params.Book.Name), Error: nil}
 }
+
+func (dbConnection *DBConnection) filterByWord(word string) []database.GetFilteredVersesByWordRow {
+	sqlString := sql.NullString{}
+	if word != "" {
+		sqlString.String = word
+		sqlString.Valid = true
+	}
+	result, err := dbConnection.DB.GetFilteredVersesByWord(context.Background(), sqlString)
+	if err != nil {
+		log.Fatal("Error getting filtered verses by word", err)
+	}
+	return result
+}
