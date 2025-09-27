@@ -37,4 +37,4 @@ Para mas informacion de las migraciones echa un vistazo a la documentacion de [g
 
 Puedes descargar y/o usar el siguiente script de postgreSQL para crear la base de datos con los datos:
 
-[Descargar script de PostgresSQL](https://github.com/hiahir357/bible-to-db-es/blob/main/bible_es)
+[Descargar script de PostgreSQL](https://github.com/hiahir357/bible-to-db-es/blob/main/bible_es)
