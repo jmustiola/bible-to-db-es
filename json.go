@@ -4,8 +4,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"os"
 )
+
+func getChapterJsonContent(book Book) []byte {
+	jsonBytes, err := json.Marshal(book.Chapters)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return jsonBytes
+}
 
 func jsonToBook(filepath string) (Book, error) {
 	bookFile, err := os.OpenFile(filepath, os.O_RDWR|os.O_CREATE, 0666)

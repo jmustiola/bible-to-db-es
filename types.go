@@ -5,7 +5,7 @@ import (
 	"github.com/hiahir357/bible-to-db/internal/database"
 )
 
-type DBConnection struct {
+type Repository struct {
 	DB *database.Queries
 }
 

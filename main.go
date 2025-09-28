@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"log"
-	"os"
 	"path/filepath"
 	"sync"
 
@@ -15,8 +14,6 @@ import (
 func main() {
 	// loading env variables
 	godotenv.Load(".env")
-
-	// getting ENVs
 	dbUrlStr, dataSourcePath := getProgramEnvs()
 
 	// database connection
@@ -27,48 +24,37 @@ func main() {
 	defer conn.Close()
 
 	queries := database.New(conn)
-	dbConnection := DBConnection{
+	repo := Repository{
 		DB: queries,
 	}
 
-	switch os.Args[1] {
-	case "gen":
-		wg := &sync.WaitGroup{}
-		result := make(chan Result)
+	wg := &sync.WaitGroup{}
+	result := make(chan Result)
 
-		version := dbConnection.createVersion("Reina-Valera 1960", "RV1960")
-		for _, filename := range JSON_FILENAMES {
-			wg.Add(1)
-			book, err := jsonToBook(filepath.Join(dataSourcePath, filename))
-			if err != nil {
-				log.Println("Error parsing the json file to model", filename, ":", err)
-			}
-			params := BookCreationParams{
-				VersionId: version.ID,
-				Book:      book,
-			}
-			go dbConnection.processBookCreation(params, result, wg)
+	version := repo.createVersion("Reina-Valera 1960", "RV1960")
+	for _, filename := range JSON_FILENAMES {
+		wg.Add(1)
+		book, err := jsonToBook(filepath.Join(dataSourcePath, filename))
+		if err != nil {
+			log.Println("Error parsing the json file to model", filename, ":", err)
 		}
-
-		go func() {
-			wg.Wait()
-			close(result)
-		}()
-
-		for res := range result {
-			if res.Error != nil {
-				log.Fatal("Error creating book in DB", res.Error)
-			}
-			log.Println(res.Message)
+		params := BookCreationParams{
+			VersionId: version.ID,
+			Book:      book,
 		}
-	case "--search":
-		if os.Args[2] != "" {
-			result := dbConnection.filterByWord(os.Args[2])
-			for _, row := range result {
-				log.Println(row)
-			}
-		}
+		go repo.processBookCreation(params, result, wg)
+	}
 
+	go func() {
+		wg.Wait()
+		close(result)
+	}()
+
+	for res := range result {
+		if res.Error != nil {
+			log.Fatal("Error creating book in DB", res.Error)
+		}
+		log.Println(res.Message)
 	}
 
 }
